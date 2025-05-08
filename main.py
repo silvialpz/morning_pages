@@ -18,7 +18,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Artist's Way")
-        self.showMaximized()
         self.showFullScreen()
 
         self.UI()
@@ -31,7 +30,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def widgets(self):
         # Central widget is like content container in web dev
         self.central_widget = QtWidgets.QWidget()
-        self.central_widget.setStyleSheet("background-color: #FFF8E6;")
+        self.central_widget.setStyleSheet("background-color: #FFF8E6; padding: 0px; margin: 0px;")
 
         self.date_label = QtWidgets.QLabel()
         self.date_label.setText(datetime.datetime.now().strftime("%A, %B %d"))
@@ -43,22 +42,22 @@ class MainWindow(QtWidgets.QMainWindow):
         self.text_edit.setPlaceholderText("Write your morning pages here...")
         self.text_edit.setStyleSheet("background-color: #FFF8E6; margin: 100px 200px 100px 0px; border: 0px transparent;")
         self.text_edit.setFont(sinhala_font)
-        # self.text_edit.textChanged.connect(self.on_text_changed)
+        self.text_edit.textChanged.connect(self.on_text_changed)
 
         self.page_number_label = QtWidgets.QLabel()
         self.page_number_label.setText("1/3")
         self.page_number_label.setAlignment(Qt.AlignmentFlag.AlignRight)
-        self.page_number_label.setStyleSheet("margin: 0px 15px 15px 0px;")
+        self.page_number_label.setStyleSheet("margin: 15px;")
         self.page_number_label.setFont(sinhala_font)
 
     def layouts(self):
         self.setCentralWidget(self.central_widget)
         self.central_layout = QtWidgets.QHBoxLayout()
-        self.central_layout.addWidget(self.text_edit)
         self.central_widget.setLayout(self.central_layout)
 
-        self.left_layout = QtWidgets.QVBoxLayout()
+        self.left_layout = QtWidgets.QHBoxLayout()
         self.left_layout.addWidget(self.date_label)
+
         self.right_layout = QtWidgets.QVBoxLayout()
         self.right_layout.addWidget(self.text_edit)
         self.right_layout.addWidget(self.page_number_label)
@@ -70,12 +69,19 @@ class MainWindow(QtWidgets.QMainWindow):
         if event.key() == Qt.Key.Key_Escape:  # Exit full-screen mode on pressing Esc
             self.showMaximized()
 
-    # def on_text_changed(self):
-    #     text = self.text_edit.toPlainText()
-    #     word_count = len(text.split()) - 1  # -1 to get an accurate count
+    def on_text_changed(self):
+        text = self.text_edit.toPlainText()
+        word_count = len(text.split()) - 1  # -1 to get an accurate count
 
-    #     if word_count == TARGET_WORD_COUNT:
-    #         self.text_edit.clear()
+        if word_count == TARGET_WORD_COUNT:
+            try:
+                query = "INSERT INTO 'morning_pages' (date, entry) VALUES(?, ?)"
+                cur.execute(query, (datetime.datetime.now().strftime("%Y-%m-%d"), text))
+                con.commit()
+                self.page_number_label.setText("2/3")
+                self.text_edit.clear()
+            except sqlite3.Error as e:
+                print(f"Error inserting data: {e}")
 
 
 if __name__ == "__main__":

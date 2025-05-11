@@ -1,4 +1,5 @@
 import sys
+import re
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
@@ -8,7 +9,7 @@ import datetime
 from PyQt6.QtGui import QPainter, QPen, QColor
 
 
-TARGET_WORD_COUNT = 258  # per page, TODO: make it editable later
+TARGET_WORD_COUNT = 258  # per page, TODO: make it editable later (258 based on 3 pages of A4 paper)
 
 # Connect to database
 con = sqlite3.connect('data.db')
@@ -22,6 +23,10 @@ class MainWindow(QtWidgets.QWidget):
         super().__init__()
         self.setWindowTitle("Artist's Way")
         self.showFullScreen()
+
+        self.page_1 = ""
+        self.page_2 = ""
+        self.page_3 = ""
 
         self.UI()
         self.show()
@@ -78,31 +83,51 @@ class MainWindow(QtWidgets.QWidget):
 
     def on_text_changed(self):
         text = self.text_edit.toPlainText()
-        word_count = len(text.split()) - 1  # -1 to get an accurate count
+        word_count = text.count(" ")
 
         # What is going to happen her is that we will flip the page two times, to have three morning pages.
-        if word_count == TARGET_WORD_COUNT:
+        if word_count == TARGET_WORD_COUNT and self.page_1 == "":
+            self.page_1 = text
+            self.page_number_label.setText("2/3")
+            self.text_edit.clear()
+            self.update()
+        elif word_count == TARGET_WORD_COUNT and self.page_2 == "":
+            self.page_2 = text
+            self.page_number_label.setText("3/3")
+            self.text_edit.clear()
+            self.update()
+        elif word_count == TARGET_WORD_COUNT and self.page_3 == "":
+            self.page_3 = text
+            self.text_edit.clear()
+            self.text_edit.setEnabled(False)
+            self.text_edit.setPlaceholderText("You've completed your morning pages!")
+            self.page_number_label.setText("")  
             try:
                 query = "INSERT INTO 'morning_pages' (date, entry) VALUES(?, ?)"
-                cur.execute(query, (datetime.datetime.now().strftime("%Y-%m-%d"), text))
+                cur.execute(query, (datetime.datetime.now().strftime("%Y-%m-%d"), self.page_1 + self.page_2 + self.page_3))
                 con.commit()
-                self.page_number_label.setText("2/3")
-                self.text_edit.clear()
+
             except sqlite3.Error as e:
                 print(f"Error inserting data: {e}")
 
     def paintEvent(self, event):
         # Rectangles to the left are graphical reperesentations of the pages
-        qp = QPainter(self)
-        qp.setBrush(QColor("#FFF4D5"))
-        qp.setPen(QPen(QColor('transparent'), 0))
-        qp.drawRect(0, 0, 60, self.size().height())
+        if self.page_1 != "" and self.page_2 == "":
+            qp = QPainter(self)
+            qp.setBrush(QColor("#FFF6DF"))
+            qp.setPen(QPen(QColor('transparent'), 0))
+            qp.drawRect(0, 0, 60, self.size().height())
+            qp.end()
+        elif self.page_2 != "" and self.page_3 == "":
+            qp = QPainter(self)
+            qp.setBrush(QColor("#FFF4D5"))
+            qp.setPen(QPen(QColor('transparent'), 0))
+            qp.drawRect(0, 0, 60, self.size().height())
 
-        qp.setBrush(QColor("#FFF6DF"))
-        qp.setPen(QPen(QColor('transparent'), 0))
-        qp.drawRect(60, 0, 60, self.size().height())
-
-        qp.end()
+            qp.setBrush(QColor("#FFF6DF"))
+            qp.setPen(QPen(QColor('transparent'), 0))
+            qp.drawRect(60, 0, 60, self.size().height())
+            qp.end()
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
